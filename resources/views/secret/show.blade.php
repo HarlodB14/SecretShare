@@ -1,0 +1,100 @@
+@extends('layouts.app')
+
+@section('title', 'Your Secret')
+
+@section('content')
+    <div class="max-w-lg mx-auto text-center">
+
+        {{--  Icon  --}}
+        <div class="inline-flex items-center justify-center w-14 h-14 bg-indigo-100 rounded-full mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-indigo-600" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+        </div>
+
+        <h1 class="text-2xl font-semibold text-slate-900">Here is your secret</h1>
+        <p class="mt-2 text-sm text-slate-500">
+            This secret has been permanently deleted from our servers after this single view.
+        </p>
+
+        {{--  Secret box  --}}
+        <div class="mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm text-left">
+            <p class="text-xs font-medium text-slate-500 mb-2 uppercase tracking-wide">Secret value</p>
+            <div class="flex items-center gap-2">
+                <input type="password" readonly value="{{ $password }}" id="secret-value"
+                       class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm
+                          text-slate-700 font-mono focus:outline-none">
+                <button type="button" onclick="toggleVisibility()" id="toggle-btn"
+                        class="shrink-0 border border-slate-200 hover:bg-slate-50 rounded-lg px-3 py-2
+                           text-sm text-slate-600 transition-colors focus:outline-none focus:ring-2
+                           focus:ring-slate-300">
+                    Show
+                </button>
+                <button type="button" onclick="copySecret()" id="copy-btn"
+                        class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2
+                           text-sm font-medium transition-colors focus:outline-none focus:ring-2
+                           focus:ring-indigo-500 focus:ring-offset-2">
+                    Copy
+                </button>
+            </div>
+        </div>
+
+        {{--  Deletion notice --}}
+        <div class="mt-4 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3 text-left">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mt-0.5 shrink-0 text-red-500" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                <path d="M10 11v6"></path>
+                <path d="M14 11v6"></path>
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+            </svg>
+            <p class="text-xs text-red-700">
+                This secret has been permanently deleted and cannot be retrieved again. Save it now.
+            </p>
+        </div>
+
+        <a href="{{ route('home') }}"
+           class="mt-6 inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Share another secret
+        </a>
+    </div>
+@endsection
+
+@push('scripts')
+    <script>
+        function toggleVisibility() {
+            const input = document.getElementById('secret-value');
+            const btn = document.getElementById('toggle-btn');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = 'Hide';
+            } else {
+                input.type = 'password';
+                btn.textContent = 'Show';
+            }
+        }
+
+        function copySecret() {
+            const input = document.getElementById('secret-value');
+            const btn = document.getElementById('copy-btn');
+            navigator.clipboard.writeText(input.value).then(() => {
+                btn.textContent = 'Copied!';
+                btn.classList.replace('bg-indigo-600', 'bg-green-600');
+                btn.classList.replace('hover:bg-indigo-700', 'hover:bg-green-700');
+                setTimeout(() => {
+                    btn.textContent = 'Copy';
+                    btn.classList.replace('bg-green-600', 'bg-indigo-600');
+                    btn.classList.replace('hover:bg-green-700', 'hover:bg-indigo-700');
+                }, 2500);
+            });
+        }
+    </script>
+@endpush

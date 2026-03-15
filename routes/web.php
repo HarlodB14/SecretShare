@@ -1,7 +1,25 @@
 <?php
 
+use App\Http\Controllers\SecretController;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
+/*rate limit*/
+RateLimiter::for('secret-creation', static function (Request $request) {
+    if (app()->environment('testing')) {
+        return Limit::perMinute(1000)->by($request->ip());
+    }
+
+    return Limit::perMinute(10)->by($request->ip());
 });
+
+/*
+|--------------------------------------------------------------------------
+| Web routes
+|--------------------------------------------------------------------------
+*/
+Route::get('/', [SecretController::class, 'create'])->name('home');
+Route::post('/secret', [SecretController::class, 'store'])->name('secret.store')->middleware('throttle:secret-creation');
+Route::get('/secret/{token}', [SecretController::class, 'show'])->name('secret.show');
