@@ -34,14 +34,30 @@
             </a>
 
             <div class="flex items-center gap-3">
-                <form action="{{ route('preferences.language') }}" method="POST">
+                <form action="{{ route('preferences.language') }}" method="POST" class="flex items-center gap-1">
                     @csrf
-                    <label for="locale" class="sr-only">{{ __('ui.language') }}</label>
-                    <select id="locale" name="locale" onchange="this.form.submit()"
-                            class="rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-slate-700 dark:text-slate-100">
-                        <option value="nl" @selected(app()->getLocale() === 'nl')>{{ __('ui.language_nl') }}</option>
-                        <option value="en" @selected(app()->getLocale() === 'en')>{{ __('ui.language_en') }}</option>
-                    </select>
+
+                    <button type="submit" name="locale" value="nl"
+                            class="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors {{ app()->getLocale() === 'nl' ? 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300' : 'border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-100' }}">
+                        <svg class="h-3.5 w-5 rounded-sm" viewBox="0 0 24 16" aria-hidden="true">
+                            <rect width="24" height="16" fill="#21468B"></rect>
+                            <rect width="24" height="10.66" y="0" fill="#FFFFFF"></rect>
+                            <rect width="24" height="5.33" y="0" fill="#AE1C28"></rect>
+                        </svg>
+                        <span>{{ __('ui.language_nl') }}</span>
+                    </button>
+
+                    <button type="submit" name="locale" value="en"
+                            class="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors {{ app()->getLocale() === 'en' ? 'border-indigo-600 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300' : 'border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-100' }}">
+                        <svg class="h-3.5 w-5 rounded-sm" viewBox="0 0 24 16" aria-hidden="true">
+                            <rect width="24" height="16" fill="#012169"></rect>
+                            <path d="M0 0L24 16M24 0L0 16" stroke="#FFFFFF" stroke-width="4"></path>
+                            <path d="M0 0L24 16M24 0L0 16" stroke="#C8102E" stroke-width="2"></path>
+                            <path d="M12 0V16M0 8H24" stroke="#FFFFFF" stroke-width="6"></path>
+                            <path d="M12 0V16M0 8H24" stroke="#C8102E" stroke-width="3"></path>
+                        </svg>
+                        <span>{{ __('ui.language_en') }}</span>
+                    </button>
                 </form>
 
                 <button type="button" id="theme-toggle" role="switch" aria-checked="false" aria-label="{{ __('ui.theme') }}"
