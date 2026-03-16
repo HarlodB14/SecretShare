@@ -1,4 +1,4 @@
-# SecretShare - Password Sharing Tool
+# SecretShare - Secured Password Sharing Tool
 
 A Laravel 12 application to share sensitive secrets using one-time or limited-use links.
 Secrets are encrypted at rest and deleted after use.
