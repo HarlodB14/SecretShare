@@ -3,7 +3,7 @@
 @section('title', 'Your Secret')
 
 @section('content')
-    <div class="max-w-lg mx-auto text-center">
+    <div id="secret-page-root" class="max-w-lg mx-auto text-center">
 
         {{--  Icon  --}}
         <div class="inline-flex items-center justify-center w-14 h-14 bg-indigo-100 rounded-full mb-4">
@@ -19,25 +19,22 @@
             This secret has been permanently deleted from our servers after this single view.
         </p>
 
+        @if ($expiresAt)
+            <div id="expiry-banner" class="mt-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-left">
+                <p class="text-xs font-medium text-amber-800 uppercase tracking-wide">Expiration</p>
+                <p class="mt-1 text-sm text-amber-700">
+                    This page will automatically redirect when expired.
+                </p>
+            </div>
+        @endif
+
         {{--  Secret box  --}}
-        <div class="mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm text-left">
+        <div id="secret-card" class="mt-6 bg-white border border-slate-200 rounded-xl p-5 shadow-sm text-left">
             <p class="text-xs font-medium text-slate-500 mb-2 uppercase tracking-wide">Secret value</p>
             <div class="flex items-center gap-2">
-                <input type="password" readonly value="{{ $password }}" id="secret-value"
+                <input type="text" readonly value="{{ $password }}" id="secret-value"
                        class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm
                           text-slate-700 font-mono focus:outline-none">
-                <button type="button" onclick="toggleVisibility()" id="toggle-btn"
-                        class="shrink-0 border border-slate-200 hover:bg-slate-50 rounded-lg px-3 py-2
-                           text-sm text-slate-600 transition-colors focus:outline-none focus:ring-2
-                           focus:ring-slate-300">
-                    Show
-                </button>
-                <button type="button" onclick="copySecret()" id="copy-btn"
-                        class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2
-                           text-sm font-medium transition-colors focus:outline-none focus:ring-2
-                           focus:ring-indigo-500 focus:ring-offset-2">
-                    Copy
-                </button>
             </div>
         </div>
 
@@ -66,35 +63,31 @@
             Share another secret
         </a>
     </div>
+
+
 @endsection
 
-@push('scripts')
-    <script>
-        function toggleVisibility() {
-            const input = document.getElementById('secret-value');
-            const btn = document.getElementById('toggle-btn');
-            if (input.type === 'password') {
-                input.type = 'text';
-                btn.textContent = 'Hide';
-            } else {
-                input.type = 'password';
-                btn.textContent = 'Show';
-            }
-        }
+@if ($expiresAt)
+    @push('scripts')
+        <script>
+            (function () {
+                const expiresAtIso = @json($expiresAt);
+                const expiresAtMs = Date.parse(expiresAtIso);
 
-        function copySecret() {
-            const input = document.getElementById('secret-value');
-            const btn = document.getElementById('copy-btn');
-            navigator.clipboard.writeText(input.value).then(() => {
-                btn.textContent = 'Copied!';
-                btn.classList.replace('bg-indigo-600', 'bg-green-600');
-                btn.classList.replace('hover:bg-indigo-700', 'hover:bg-green-700');
-                setTimeout(() => {
-                    btn.textContent = 'Copy';
-                    btn.classList.replace('bg-green-600', 'bg-indigo-600');
-                    btn.classList.replace('hover:bg-green-700', 'hover:bg-indigo-700');
-                }, 2500);
-            });
-        }
-    </script>
-@endpush
+                if (Number.isNaN(expiresAtMs)) {
+                    return;
+                }
+
+                const redirectIfExpired = () => {
+                    if (Date.now() >= expiresAtMs) {
+                        window.location.replace(@json(route('secret.expired')));
+                    }
+                };
+
+                redirectIfExpired();
+                window.setInterval(redirectIfExpired, 1000);
+            })();
+        </script>
+    @endpush
+@endif
+

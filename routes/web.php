@@ -21,5 +21,8 @@ RateLimiter::for('secret-creation', static function (Request $request) {
 |--------------------------------------------------------------------------
 */
 Route::get('/', [SecretController::class, 'create'])->name('home');
+Route::get('/secret', [SecretController::class, 'create'])->name('secret.create');
 Route::post('/secret', [SecretController::class, 'store'])->name('secret.store')->middleware('throttle:secret-creation');
+Route::get('/secret/expired', [SecretController::class, 'expired'])->name('secret.expired');
+Route::get('/secret/{token}/created', [SecretController::class, 'created'])->name('secret.created');
 Route::get('/secret/{token}', [SecretController::class, 'show'])->name('secret.show');

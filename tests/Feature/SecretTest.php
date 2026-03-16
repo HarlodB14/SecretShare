@@ -5,15 +5,14 @@ namespace Tests\Feature;
 use App\Models\Secret;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 class SecretTest extends TestCase
 {
     use RefreshDatabase;
 
-    // ──────────────────────────────────────────────────────────────
     // Home / create form
-    // ──────────────────────────────────────────────────────────────
 
     public function test_home_page_is_accessible(): void
     {
@@ -22,9 +21,14 @@ class SecretTest extends TestCase
             ->assertViewIs('secret.create');
     }
 
-    // ──────────────────────────────────────────────────────────────
+    public function test_secret_create_route_is_accessible_via_get(): void
+    {
+        $this->get(route('secret.create'))
+            ->assertOk()
+            ->assertViewIs('secret.create');
+    }
+
     // Storing a secret
-    // ──────────────────────────────────────────────────────────────
 
     public function test_user_can_create_a_secret(): void
     {
@@ -32,10 +36,16 @@ class SecretTest extends TestCase
             'password' => 'super-secret-password',
         ]);
 
-        $response->assertOk();
-        $response->assertViewIs('secret.created');
-        $response->assertViewHas('link');
         $this->assertDatabaseCount('secrets', 1);
+
+        $secret = Secret::first();
+
+        $response->assertRedirect(route('secret.created', $secret->token));
+
+        $this->get(route('secret.created', $secret->token))
+            ->assertOk()
+            ->assertViewIs('secret.created')
+            ->assertViewHas('link', route('secret.show', $secret->token));
     }
 
     public function test_secret_is_encrypted_at_rest(): void
@@ -78,7 +88,7 @@ class SecretTest extends TestCase
     public function test_max_views_must_be_a_positive_integer(): void
     {
         $this->post(route('secret.store'), [
-            'password'  => 'test',
+            'password' => 'test',
             'max_views' => 0,
         ])->assertSessionHasErrors('max_views');
     }
@@ -86,7 +96,7 @@ class SecretTest extends TestCase
     public function test_expires_at_must_be_in_the_future(): void
     {
         $this->post(route('secret.store'), [
-            'password'   => 'test',
+            'password' => 'test',
             'expires_at' => now()->subHour()->toDateTimeString(),
         ])->assertSessionHasErrors('expires_at');
     }
@@ -94,19 +104,17 @@ class SecretTest extends TestCase
     public function test_secret_can_be_created_with_optional_fields(): void
     {
         $this->post(route('secret.store'), [
-            'password'   => 'test',
-            'max_views'  => 3,
+            'password' => 'test',
+            'max_views' => 3,
             'expires_at' => now()->addDay()->format('Y-m-d H:i:s'),
-        ])->assertOk();
+        ])->assertRedirect();
 
         $secret = Secret::first();
         $this->assertEquals(3, $secret->max_views);
         $this->assertNotNull($secret->expires_at);
     }
 
-    // ──────────────────────────────────────────────────────────────
-    // Viewing a secret (one-time link behaviour)
-    // ──────────────────────────────────────────────────────────────
+    // viewing a secret (one-time link behaviour)
 
     public function test_secret_is_decrypted_and_shown_on_first_view(): void
     {
@@ -117,6 +125,26 @@ class SecretTest extends TestCase
             ->assertOk()
             ->assertViewIs('secret.show')
             ->assertViewHas('password', 'my-password');
+    }
+
+    public function test_revealed_secret_response_is_not_cacheable(): void
+    {
+        $this->post(route('secret.store'), [
+            'password' => 'cache-sensitive',
+            'max_views' => 2,
+            'expires_at' => now()->addMinutes(10)->format('Y-m-d H:i:s'),
+        ]);
+
+        $response = $this->get(route('secret.show', Secret::first()->token));
+        $cacheControl = (string)$response->headers->get('Cache-Control');
+
+        $this->assertStringContainsString('no-store', $cacheControl);
+        $this->assertStringContainsString('no-cache', $cacheControl);
+        $this->assertStringContainsString('must-revalidate', $cacheControl);
+        $this->assertStringContainsString('max-age=0', $cacheControl);
+        $this->assertStringContainsString('private', $cacheControl);
+        $response->assertHeader('Pragma', 'no-cache');
+        $response->assertHeader('Expires', '0');
     }
 
     public function test_secret_is_deleted_after_single_view_by_default(): void
@@ -138,14 +166,12 @@ class SecretTest extends TestCase
         $this->get(route('secret.show', $token))->assertNotFound(); // deleted → 404
     }
 
-    // ──────────────────────────────────────────────────────────────
-    // Max-views behaviour  (user story 5)
-    // ──────────────────────────────────────────────────────────────
+    // max-views behaviour
 
     public function test_secret_survives_until_max_views_is_reached(): void
     {
         $this->post(route('secret.store'), [
-            'password'  => 'multi-view',
+            'password' => 'multi-view',
             'max_views' => 3,
         ]);
         $token = Secret::first()->token;
@@ -163,7 +189,7 @@ class SecretTest extends TestCase
     public function test_secret_with_max_views_is_gone_after_limit(): void
     {
         $this->post(route('secret.store'), [
-            'password'  => 'test',
+            'password' => 'test',
             'max_views' => 2,
         ]);
         $token = Secret::first()->token;
@@ -174,23 +200,46 @@ class SecretTest extends TestCase
         $this->get(route('secret.show', $token))->assertNotFound();
     }
 
-    // ──────────────────────────────────────────────────────────────
-    // Expiry behaviour  (user story 4)
-    // ──────────────────────────────────────────────────────────────
+    // Expiry behaviour
 
     public function test_expired_secret_returns_expired_view(): void
     {
         $this->post(route('secret.store'), [
-            'password'   => 'test',
+            'password' => 'test',
             'expires_at' => now()->addHour()->format('Y-m-d H:i:s'),
         ]);
 
         // Manually wind the clock past expiry.
         Secret::first()->update(['expires_at' => now()->subMinute()]);
 
-        $this->get(route('secret.show', Secret::first()->token))
+        $this->followingRedirects()
+            ->get(route('secret.show', Secret::first()->token))
             ->assertOk()
             ->assertViewIs('secret.expired');
+    }
+
+    public function test_expired_page_can_be_refreshed(): void
+    {
+        $this->get(route('secret.expired'))
+            ->assertOk()
+            ->assertViewIs('secret.expired');
+    }
+
+    public function test_expiring_secret_response_has_backend_refresh_header(): void
+    {
+        $this->post(route('secret.store'), [
+            'password' => 'test',
+            'max_views' => 2,
+            'expires_at' => now()->addMinute()->format('Y-m-d H:i:s'),
+        ]);
+
+        $token = Secret::first()->token;
+
+        $response = $this->get(route('secret.show', $token));
+        $refreshHeader = (string)$response->headers->get('Refresh');
+
+        $this->assertNotSame('', $refreshHeader);
+        $this->assertStringContainsString('url=' . route('secret.expired'), $refreshHeader);
     }
 
     public function test_expired_secret_is_deleted_from_db_on_access(): void
@@ -203,18 +252,24 @@ class SecretTest extends TestCase
         $this->assertDatabaseCount('secrets', 0);
     }
 
-    // ──────────────────────────────────────────────────────────────
     // Edge cases
-    // ──────────────────────────────────────────────────────────────
 
     public function test_unknown_token_returns_404(): void
     {
         $this->get(route('secret.show', 'nonexistent-token'))->assertNotFound();
     }
 
-    // ──────────────────────────────────────────────────────────────
+    public function test_prune_expired_command_deletes_expired_secrets(): void
+    {
+        Secret::factory()->create(['expires_at' => now()->subMinute()]);
+        Secret::factory()->create(['expires_at' => now()->addMinute()]);
+
+        Artisan::call('secret:prune-expired');
+
+        $this->assertDatabaseCount('secrets', 1);
+    }
+
     // Secret model helper methods
-    // ──────────────────────────────────────────────────────────────
 
     public function test_is_expired_returns_true_for_past_date(): void
     {

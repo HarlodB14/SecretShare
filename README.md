@@ -61,6 +61,27 @@ composer dump-autoload
 php artisan test --testsuite=Feature
 ```
 
+## Expiration Runtime (Queue + Scheduler)
+
+Automatic expiry deletion relies on delayed jobs and a scheduled safety-net command.
+Use a non-sync queue driver for real delayed execution:
+
+```dotenv
+QUEUE_CONNECTION=database
+APP_TIMEZONE=Europe/Amsterdam
+```
+
+If you adjust timezone/env values, run `php artisan optimize:clear` before re-testing.
+
+Run both processes during local development:
+
+```bash
+php artisan schedule:work
+php artisan queue:work --queue=default --tries=3
+```
+
+Windows helper script: `setup-scheduler.bat`
+
 ## Important Paths
 
 - Routes: `routes/web.php`

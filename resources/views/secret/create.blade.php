@@ -62,7 +62,8 @@
                     </label>
                     <input type="datetime-local" id="expires_at" name="expires_at"
                            value="{{ old('expires_at') }}"
-                           min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}"
+                           min="{{ now()->format('Y-m-d\TH:i') }}"
+                           data-min-offset-minutes="1"
                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900
                               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
                               @error('expires_at') border-red-400 @enderror">
@@ -97,4 +98,29 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        (function () {
+            const input = document.getElementById('expires_at');
+
+            if (!input) {
+                return;
+            }
+
+            // Use client time to avoid drift between browser and server clocks.
+            const offsetMinutes = Number(input.dataset.minOffsetMinutes || '1');
+            const minDate = new Date(Date.now() + (offsetMinutes * 60 * 1000));
+            minDate.setSeconds(0, 0);
+
+            const yyyy = minDate.getFullYear();
+            const mm = String(minDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(minDate.getDate()).padStart(2, '0');
+            const hh = String(minDate.getHours()).padStart(2, '0');
+            const min = String(minDate.getMinutes()).padStart(2, '0');
+
+            input.min = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+        })();
+    </script>
+@endpush
 

@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Contracts\SecretServiceInterface;
+use App\Jobs\ExpireSecretJob;
 use App\Models\Secret;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -13,12 +15,20 @@ class SecretService implements SecretServiceInterface
 
     public function create(string $password, ?int $maxViews = null, ?string $expiresAt = null): Secret
     {
-        return Secret::create([
+        $expiry = $expiresAt ? Carbon::parse($expiresAt) : null;
+
+        $secret = Secret::create([
             'token' => Str::random(64),
             'secret' => Crypt::encryptString($password),
             'max_views' => $maxViews,
-            'expires_at' => $expiresAt,
+            'expires_at' => $expiry,
         ]);
+
+        if ($expiry) {
+            ExpireSecretJob::dispatch($secret->id)->delay($expiry);
+        }
+
+        return $secret;
     }
 
     public function reveal(Secret $secret): string
@@ -35,6 +45,11 @@ class SecretService implements SecretServiceInterface
 
             return $password;
         });
+    }
+
+    public function revoke(Secret $secret): void
+    {
+        $secret->delete();
     }
 }
 
